@@ -15,7 +15,7 @@ module "permission_sets" {
       name               = "SSO_PS_ADMINISTRATOR",
       description        = "Allow Full Access to the account",
       relay_state        = "",
-      session_duration   = "12",
+      session_duration   = "PT12H",
       tags               = {},
       inline_policy      = "",
       policy_attachments = ["arn:aws:iam::aws:policy/AdministratorAccess"]
