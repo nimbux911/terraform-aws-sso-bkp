@@ -1,22 +1,83 @@
-# terraform-aws-sso
-Terraform module to configure AWS SSO.
+# AWS SSO Permission Sets Module
 
-# Short description of this project
-description: |-
-  This module configures [AWS Single Sign-On (SSO)](https://aws.amazon.com/single-sign-on/). AWS SSO makes it easy to 
-  centrally manage access to multiple AWS accounts and business applications and provide users with single sign-on 
-  access to all their assigned accounts and applications from one place. With AWS SSO, you can easily manage access and 
-  user permissions to all of your accounts in AWS Organizations centrally. AWS SSO configures and maintains all the 
-  necessary permissions for your accounts automatically, without requiring any additional setup in the individual 
-  accounts. You can assign user permissions based on common job functions and customize these permissions to meet your 
-  specific security requirements.
-  With AWS SSO, you can create and manage user identities in AWS SSO’s identity store, or easily connect to your 
-  existing identity source.
+This module creates a collection of [AWS SSO permission sets](https://docs.aws.amazon.com/singlesignon/latest/userguide/permissionsetsconcept.html). A permission set is a collection of administrator-defined policies that AWS SSO uses to determine a user's effective permissions to access a given AWS account. Permission sets can contain either AWS managed policies or custom policies that are stored in AWS SSO. Policies are essentially documents that act as containers for one or more permission statements. These statements represent individual access controls (allow or deny) for various tasks that determine what tasks users can or cannot perform within the AWS account.
 
-usage: |-
-  This module contains two sub-modules that can be used in conjunction to provision AWS SSO Permission Sets and to 
-  assign AWS SSO Users and Groups to Permissions Sets in accounts.
+Permission sets are stored in AWS SSO and are only used for AWS accounts. They are not used to manage access to cloud applications. Permission sets ultimately get created as IAM roles in a given AWS account, with trust policies that allow users to assume the role through AWS SSO.
 
-  - [modules/account-assignments](/modules/account-assignments) - a module for assigning users and groups to permission 
-  sets in particular accounts
-  - [modules/permission-sets](/modules/permission-sets) - a module for provisioning AWS SSO permission sets
+## Usage
+
+```hcl
+module "permission_sets" {
+  source = "https://github.com/nimbux911/terraform-aws-sso.git//modules/permission-sets?ref=main"
+
+  permission_sets = [
+    {
+      name               = "SSO_PS_ADMINISTRATOR",
+      description        = "Allow Full Access to the account",
+      relay_state        = "",
+      session_duration   = "12",
+      tags               = {},
+      inline_policy      = "",
+      policy_attachments = ["arn:aws:iam::aws:policy/AdministratorAccess"]
+      customer_managed_policy_attachments = [{
+        name = aws_iam_policy.S3Access.name
+        path = aws_iam_policy.S3Access.path
+      }]
+    },
+    {
+      name                                = "S3AdministratorAccess",
+      description                         = "Allow Full S3 Admininstrator access to the account",
+      relay_state                         = "",
+      session_duration                    = "",
+      tags                                = {},
+      inline_policy                       = data.aws_iam_policy_document.S3Access.json,
+      policy_attachments                  = []
+      customer_managed_policy_attachments = []
+    }
+  ]
+}
+
+data "aws_iam_policy_document" "S3Access" {
+  statement {
+    sid = "1"
+
+    actions = ["*"]
+
+    resources = [
+      "arn:aws:s3:::*",
+    ]
+  }
+}
+
+resource "aws_iam_policy" "S3Access" {
+  name   = "S3Access"
+  path   = "/"
+  policy = data.aws_iam_policy_document.S3Access.json
+  tags   = module.this.tags
+}
+
+account_assignments = [
+    {
+        account = "111111111111",
+        permission_set_arn = "arn:aws:sso:::permissionSet/ssoins-0000000000000000/ps-31d20e5987f0ce66",
+        permission_set_name = "Administrators",
+        principal_type = "GROUP",
+        principal_name = "Administrators"
+    },
+    {
+        account = "111111111111",
+        permission_set_arn = "arn:aws:sso:::permissionSet/ssoins-0000000000000000/ps-955c264e8f20fea3",
+        permission_set_name = "Developers",
+        principal_type = "GROUP",
+        principal_name = "Developers"
+    },
+    {
+        account = "222222222222",
+        permission_set_arn = "arn:aws:sso:::permissionSet/ssoins-0000000000000000/ps-31d20e5987f0ce66",
+        permission_set_name = "Developers",
+        principal_type = "GROUP",
+        principal_name = "Developers"
+    },
+  ]
+
+```
