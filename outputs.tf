@@ -5,3 +5,7 @@ output "permission_sets" {
 output "assignments" {
   value = aws_ssoadmin_account_assignment.this
 }
+
+output "permission_set_arn" {
+  value = sso_module.permission_sets[0].arn
+}
